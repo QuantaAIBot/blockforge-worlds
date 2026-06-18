@@ -1,0 +1,392 @@
+.app-shell {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  background: #10130f;
+  color: #f8f0de;
+}
+
+.scene-mount {
+  position: absolute;
+  inset: 0;
+}
+
+.scene-mount canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.topbar,
+.toolrail,
+.inspector,
+.hotbar,
+.notice {
+  position: absolute;
+  z-index: 2;
+}
+
+.topbar {
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  pointer-events: none;
+}
+
+.brand,
+.map-name,
+.top-actions,
+.toolrail,
+.inspector,
+.hotbar,
+.notice {
+  border: 1px solid rgba(248, 240, 222, 0.14);
+  background: rgba(18, 19, 15, 0.78);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(18px);
+}
+
+.brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  pointer-events: auto;
+}
+
+.brand svg {
+  width: 25px;
+  height: 25px;
+  color: #82d7c6;
+}
+
+.brand strong,
+.brand span,
+.map-name span,
+.manifest-grid span,
+.zone-pill em {
+  display: block;
+  line-height: 1.1;
+}
+
+.brand strong {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.brand span,
+.map-name span,
+.manifest-grid span,
+.zone-pill em {
+  color: rgba(248, 240, 222, 0.66);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.map-name {
+  display: grid;
+  grid-template-columns: auto minmax(80px, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  pointer-events: auto;
+}
+
+.map-name input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff7e8;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.top-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px;
+  border-radius: 8px;
+  pointer-events: auto;
+}
+
+button {
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.top-actions button,
+.toolrail button {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.07);
+  transition:
+    background 150ms ease,
+    transform 150ms ease;
+}
+
+.top-actions button:hover,
+.toolrail button:hover,
+.hotbar button:hover,
+.import-button:hover {
+  background: rgba(130, 215, 198, 0.2);
+}
+
+.top-actions button:active,
+.toolrail button:active,
+.hotbar button:active,
+.import-button:active {
+  transform: translateY(1px);
+}
+
+.top-actions svg,
+.toolrail svg,
+.import-button svg,
+.spawn-readout svg {
+  width: 19px;
+  height: 19px;
+}
+
+.toolrail {
+  left: 16px;
+  top: 92px;
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.toolrail button.active,
+.hotbar button.active {
+  background: #f4cb52;
+  color: #17140f;
+}
+
+.inspector {
+  right: 16px;
+  top: 92px;
+  width: min(286px, calc(100vw - 32px));
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.manifest-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.manifest-grid div {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.manifest-grid strong {
+  display: block;
+  overflow: hidden;
+  color: #fff7e8;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spawn-readout {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  background: rgba(244, 203, 82, 0.14);
+  color: #ffdf7d;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.zone-list {
+  display: grid;
+  gap: 8px;
+}
+
+.zone-pill {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.zone-pill span {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+
+.zone-pill strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-button {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.07);
+  font-weight: 800;
+}
+
+.file-input {
+  display: none;
+}
+
+.hotbar {
+  left: 50%;
+  bottom: 16px;
+  display: grid;
+  grid-template-columns: repeat(9, minmax(54px, 1fr));
+  gap: 8px;
+  width: min(760px, calc(100vw - 32px));
+  padding: 8px;
+  border-radius: 8px;
+  transform: translateX(-50%);
+}
+
+.hotbar button {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  min-width: 0;
+  min-height: 54px;
+  padding: 6px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.hotbar span {
+  width: 25px;
+  height: 25px;
+  border-radius: 5px;
+  border: 2px solid rgba(255, 255, 255, 0.34);
+  box-shadow: inset 0 -7px 0 rgba(0, 0, 0, 0.15);
+}
+
+.hotbar em {
+  overflow: hidden;
+  width: 100%;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice {
+  left: 50%;
+  bottom: 94px;
+  max-width: calc(100vw - 32px);
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: #f9ead0;
+  font-size: 13px;
+  font-weight: 750;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 780px) {
+  .topbar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .map-name {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .top-actions {
+    justify-self: end;
+  }
+
+  .top-actions button {
+    width: 34px;
+    height: 34px;
+  }
+
+  .brand {
+    min-width: 0;
+  }
+
+  .brand strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .toolrail {
+    top: auto;
+    bottom: 150px;
+    grid-auto-flow: column;
+    grid-template-columns: repeat(5, 38px);
+  }
+
+  .inspector {
+    top: 138px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    padding: 10px;
+  }
+
+  .zone-list {
+    display: none;
+  }
+
+  .hotbar {
+    grid-template-columns: repeat(5, minmax(48px, 1fr));
+    bottom: 10px;
+  }
+
+  .hotbar button {
+    min-height: 48px;
+  }
+
+  .hotbar span {
+    width: 22px;
+    height: 22px;
+  }
+
+  .notice {
+    bottom: 212px;
+  }
+}
