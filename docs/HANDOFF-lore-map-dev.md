@@ -1,81 +1,77 @@
-# BlockForge Worlds → LORE Map Development — Handoff Spec v1
+# BlockForge Worlds → LORE Map Development — Handoff Spec v2
 
-**Author:** Ren (CTO) · **Date:** 2026-06-18 · **Builder:** Codex · **Verifiers:** Ren + M3
-**Repo:** `QuantaAIBot/blockforge-worlds` (`2f79f4c` "Initial BlockForge Worlds prototype")
+**Author:** Ren (CTO) · **Date:** 2026-06-18 · **Builder:** Codex (laptop) · **Verifiers:** Ren + M3
+**Repo:** `QuantaAIBot/blockforge-worlds`
 
 ## Purpose
-This repo is the foundation for **LORE map development**: the in-browser block-map forge that
-authors `.bfworld.json` maps which feed the LORE runtime. This spec hands the next phase to Codex,
-gated by Ren + M3 review.
+This repo is the **world-blockout + LORE-asset-placement tool** for **LORE** — a standalone game on
+**Unreal Engine 5**. The forge authors `.bfworld.json` maps (block geometry + zones + LORE prop
+placements) that export into UE5, where LORE is actually built. The **north star is the feel of
+Fortnite / GTA-6** — that's the ambition, not a near-term deliverable. Those are AAA, multi-year
+efforts; the realistic, honest path is incremental, and the forge is the *level-design / greybox
+front-end*, not the engine.
 
 ---
 
-## Verified current state (Ren, 2026-06-18 — ran it, did not trust the report)
-- **Stack:** React 19 + TS + Vite 8 + Three.js + Capacitor(Android). `src/world.ts` (222L map/schema/noise) + `src/App.tsx` (710L UI + scene + tools + I/O).
-- **`npm run build` → exit 0** (1769 modules, `dist/` = 744 kB JS / 200 kB gzip).
-- **`npm run lint` → exit 0** (ESLint clean).
-- **Code review:** forge logic, tool semantics (paint-on-normal / raise / lower / erase / spawn), save/load, JSON export/import, base64 share-code round-trip, and raycast→`instanceId`→voxel mapping are all correct. Seeded noise deterministic. Renderer set up once (refs avoid rebuild-on-state-change).
-- **NOT verifiable on VPS (honest gaps):** `android:debug` (needs the Windows Android SDK); the Playwright "nonblank canvas" check (**harness is not committed** — `playwright`+`pngjs` are in devDeps but no spec/config/script in the repo).
+## LOCKED DECISIONS (Drew, 2026-06-18)
+1. **Target runtime: standalone Unreal Engine 5** (full UE5, NOT UEFN). LORE is its own game.
+   UEFN/Fortnite islands can be a later distribution play, but the primary build is standalone UE5.
+2. **Asset model: real 3D assets, not voxels-forever.** The forge must support importing + placing
+   **LORE models / textures / props (glTF/GLB)** from a LORE asset library — voxel blocks become the
+   greybox/terrain layer; props are real meshes.
+3. **Export format: glTF/GLB geometry + a placement-manifest JSON**, consumed by a UE5 Editor import
+   script that instances LORE assets at the recorded transforms (props as engine assets, not baked geometry).
+4. **Map scale:** grow to larger **chunked** blockout maps (requires the perf rework — incremental
+   instance updates, not full-rebuild-per-edit). True open-world streaming lives in **UE5 World Partition** downstream.
+5. **Zone taxonomy:** `kind` stays an **extensible tag**; current 4 (safehouse/market/race/mission)
+   are defaults, grow as LORE needs. Low-stakes, evolve later.
+6. **Build routing: laptop Codex.**
 
 ---
 
-## PHASE 0 — Harden + make verification reproducible (DO FIRST; no LORE input needed)
-
-**T0.1 — Commit the Playwright canvas-pixel harness.**
-The headline verification (proves Three.js renders pixels, not just compiles) lives only on Drew's
-machine. Commit a `tests/visual/*.spec.ts` + a `test:visual` npm script that: launches the built
-app, screenshots at **1440** (desktop) and **375** (mobile) viewports, and asserts the canvas has
-**non-uniform, non-blank pixels** (sample N pixels via pngjs; fail if all equal / all background).
-*Acceptance:* a fresh clone → `npm i && npm run build && npm run test:visual` passes; deliberately
-blanking the canvas makes it FAIL (prove the check is binding, not a tautology).
-
-**T0.2 — Fix import robustness (two real crash paths on malformed/foreign maps).**
-- `isWorldMap` (App.tsx:699) does not validate `zones`. A valid-looking map missing `zones` passes
-  the guard then crashes render (`world.zones.map`, line 279) + `addZones`. Add `Array.isArray(value.zones)`.
-- `blocksByType` (line 495) assumes every `block.type` ∈ the 9 known types; an unknown type throws
-  `undefined.push`. Reject (or coerce/drop) unknown block types during import validation.
-*Acceptance:* importing JSON that (a) omits `zones` or (b) carries an unknown block type shows the
-"Import failed" notice — no white-screen crash. Add a test fixture for each.
-
-**T0.3 — One-command verification.** Add `npm test` (or `verify`) chaining `build` + `lint` +
-`test:visual`. No cost-incurring CI — **GitHub Actions are disabled fleet-wide**; keep verification
-as local npm scripts the reviewer runs.
+## Verified current state (Ren, 2026-06-18 — ran it / viewed it, not trusted)
+- Stack: React 19 + TS + Vite 8 + Three.js + Capacitor(Android). `src/world.ts` + `src/App.tsx`.
+- `npm run build` → exit 0; `npm run lint` → exit 0 (both run on VPS). Code reviewed — forge/tools/
+  save-load/export/share-code/raycast all correct.
+- **Live GitHub Pages deploy VERIFIED from the VPS:** https://quantaaibot.github.io/blockforge-worlds/
+  returns 200; path-portable build (relative `./assets/*`, both 200); **Three.js canvas renders on
+  desktop 1440 AND mobile 390** (screenshotted — real island geometry, not blank). Independently
+  closes the canvas-render gap.
+- Light mobile-UX note: stacked panels eat the small screen (3D view is a middle band) → collapsible-panel pass.
 
 ---
 
-## PHASE 1 — Repo foundation for LORE (light; some needs Drew input)
-- README: state the LORE purpose + the map→runtime pipeline. Branch namespace `<agent>/<topic>`.
-- **Map schema versioning:** LORE will add fields → define the `schemaVersion` bump + migration
-  rule now (forward-compat import: unknown fields preserved, missing fields defaulted).
-- **First LORE exporter:** the schema already carries `zones[{kind}]` (safehouse/market/race/mission).
-  Write `.bfworld.json → <LORE target>` once the target is decided (see Q1).
+## PHASE 0 — Harden + make verification reproducible (IN PROGRESS; Codex, no LORE dep)
+- **T0.1** Commit the Playwright nonblank-canvas harness + `test:visual` script (1440 + 390 viewports,
+  fail-on-blank, prove it's binding). The live Pages URL is now a stable target for it.
+- **T0.2** Fix the two import crash-paths: `isWorldMap` must validate `Array.isArray(zones)`; reject/
+  coerce unknown `block.type` (today → `undefined.push`). Add a fixture per case.
+- **T0.3** One `npm test` chaining build + lint + visual (no cost-incurring CI beyond the existing Pages deploy).
 
-## PHASE 2 — LORE map-dev features (BLOCKED on the open questions below)
-Scope TBD on LORE direction. Likely candidates pending answers: larger/chunked maps, multi-layer,
-entity/prop/NPC placement, mission/region scripting hooks, biomes, asset pipeline.
+## PHASE 1 — Voxel-toy → world-design tool feeding UE5 (next; M3-gated before build)
+- **T1.1 — glTF/GLB asset import + LORE asset library.** Load external prop meshes (`three/examples
+  GLTFLoader`), a browsable LORE asset palette alongside the block palette.
+- **T1.2 — Prop placement tool.** Place/rotate/scale/delete LORE props on the blockout (new tool +
+  schema: `props: [{assetId, x,y,z, rot, scale}]`); raycast placement like blocks. Bump `schemaVersion`
+  with a forward-compat migration (unknown fields preserved, missing defaulted).
+- **T1.3 — UE5 exporter.** Emit (a) glTF/GLB of the blockout geometry + (b) a `lore-placement.json`
+  manifest (prop assetIds + transforms + zones) + (c) a UE5 **Editor Utility / Python import script**
+  that spawns/instances the LORE assets at those transforms and tags zones as regions. Validate a
+  round-trip into an empty UE5 project.
 
----
-
-## OPEN QUESTIONS for Drew (these gate Phase 1–2 scope — I won't invent LORE canon)
-1. **What is the LORE target runtime?** The README lists our-own-runtime / UEFN / FiveM / Godot /
-   Unreal / Blender. Which one does LORE export to (or is LORE its own runtime)? → drives the exporter.
-2. **What map-dev features does LORE need** beyond today's forge? (entities/NPCs/items? mission or
-   region scripting? biomes? multi-layer? co-editing?)
-3. **Zone taxonomy:** are safehouse/market/race/mission the LORE canon, or placeholders? What's the
-   real LORE region/zone vocabulary?
-4. **Map scale:** current is 30×30 (~900 blocks). LORE target size? → decides whether Phase 2 needs
-   the perf rework (incremental scene/instance updates instead of today's full-rebuild-per-edit).
-5. **Asset pipeline:** blocks-only, or LORE-specific models/textures/props?
-6. **Build routing:** Codex on the laptop, or fleet `codex exec` on the VPS?
+## PHASE 2 — Scale + game-world structure (after Phase 1)
+- Larger **chunked** maps + the perf rework (incremental instance updates; dispose InstancedMesh
+  buffers). Region/gameplay tagging aligned to UE5 **World Partition**. Streaming-aware export.
 
 ---
 
-## Verification gates (every phase)
-- **build + lint green** + (once committed) the **Playwright visual gate is a merge gate**.
-- **Ren + M3 review before merge.** This spec itself goes through **M3 refute-first** before Codex
-  starts (per fleet orchestrate-mode), once the open questions above are answered enough to scope it.
+## Gates (every phase)
+- **build + lint green**, and the **live-URL Playwright canvas check is a merge gate** once committed (T0.1).
+- **M3 refute-first reviews this spec BEFORE Codex builds Phase 1** (fleet orchestrate-mode: spec →
+  M3 → Codex codes → Ren+M3 verify). Ren stays gate-of-record; Drew merges.
 
 ## Notes
-- `android:debug` is Windows-SDK-bound; keep APK builds on Drew's machine / the desktop Codex node.
-- Bundle is one 744 kB chunk (Three.js); code-split later, not now.
-- `escape`/`unescape` in the share-code path are deprecated (functional) — swap to TextEncoder when convenient.
+- `android:debug` is Windows-SDK-bound — keep APK builds on the laptop Codex node.
+- Bundle is one 744 kB chunk (Three.js); code-split when it matters, not now.
+- `escape`/`unescape` in the share-code path are deprecated (functional) → TextEncoder later.
+- North-star honesty: Fortnite/GTA-6 = the bar for *feel*; deliver in increments, prove each phase against the live URL.
