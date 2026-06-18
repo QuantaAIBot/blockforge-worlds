@@ -4,6 +4,16 @@ BlockForge Worlds is a browser-first block map forge for building exportable gam
 
 The project is intentionally kept separate from the earlier browser game repo.
 
+## Public Web Build
+
+The public browser build is served through GitHub Pages:
+
+```text
+https://quantaaibot.github.io/blockforge-worlds/
+```
+
+That URL is reachable from normal browsers, VPS boxes, Spark, Hetzner hosts, and other external services without depending on a local dev server.
+
 ## Current Build
 
 - 3D voxel island rendered with Three.js
