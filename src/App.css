@@ -22,6 +22,7 @@
 .toolrail,
 .inspector,
 .hotbar,
+.asset-palette,
 .notice {
   position: absolute;
   z-index: 2;
@@ -44,6 +45,7 @@
 .toolrail,
 .inspector,
 .hotbar,
+.asset-palette,
 .notice {
   border: 1px solid rgba(248, 240, 222, 0.14);
   background: rgba(18, 19, 15, 0.78);
@@ -145,6 +147,7 @@ button {
 .top-actions button:hover,
 .toolrail button:hover,
 .hotbar button:hover,
+.asset-palette button:hover,
 .import-button:hover {
   background: rgba(130, 215, 198, 0.2);
 }
@@ -152,12 +155,14 @@ button {
 .top-actions button:active,
 .toolrail button:active,
 .hotbar button:active,
+.asset-palette button:active,
 .import-button:active {
   transform: translateY(1px);
 }
 
 .top-actions svg,
 .toolrail svg,
+.asset-palette svg,
 .import-button svg,
 .spawn-readout svg {
   width: 19px;
@@ -174,7 +179,8 @@ button {
 }
 
 .toolrail button.active,
-.hotbar button.active {
+.hotbar button.active,
+.asset-palette button.active {
   background: #f4cb52;
   color: #17140f;
 }
@@ -191,7 +197,7 @@ button {
 
 .manifest-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -312,9 +318,91 @@ button {
   white-space: nowrap;
 }
 
+.asset-palette {
+  left: 16px;
+  bottom: 94px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  width: min(470px, calc(100vw - 32px));
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.asset-list,
+.prop-controls {
+  display: flex;
+  min-width: 0;
+  gap: 6px;
+}
+
+.asset-list {
+  overflow-x: auto;
+}
+
+.asset-list button,
+.prop-controls button {
+  min-height: 42px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.asset-list button {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  min-width: 112px;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.asset-list span {
+  min-width: 0;
+}
+
+.asset-list strong,
+.asset-list em,
+.prop-readout {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-list strong,
+.asset-list em {
+  display: block;
+  line-height: 1.05;
+}
+
+.asset-list strong {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.asset-list em,
+.prop-readout {
+  color: rgba(248, 240, 222, 0.66);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.prop-controls button {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  padding: 0;
+}
+
+.prop-readout {
+  max-width: 92px;
+}
+
 .notice {
   left: 50%;
-  bottom: 94px;
+  bottom: 154px;
   max-width: calc(100vw - 32px);
   padding: 8px 12px;
   border-radius: 999px;
@@ -357,7 +445,7 @@ button {
     top: auto;
     bottom: 150px;
     grid-auto-flow: column;
-    grid-template-columns: repeat(5, 38px);
+    grid-template-columns: repeat(6, 38px);
   }
 
   .inspector {
@@ -374,7 +462,7 @@ button {
 
   .hotbar {
     grid-template-columns: repeat(5, minmax(48px, 1fr));
-    bottom: 10px;
+    bottom: 86px;
   }
 
   .hotbar button {
@@ -387,6 +475,17 @@ button {
   }
 
   .notice {
-    bottom: 212px;
+    bottom: 282px;
+  }
+
+  .asset-palette {
+    left: 10px;
+    bottom: 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: calc(100vw - 20px);
+  }
+
+  .prop-readout {
+    display: none;
   }
 }

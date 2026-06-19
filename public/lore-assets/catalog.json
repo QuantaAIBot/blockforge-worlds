@@ -1,0 +1,23 @@
+[
+  {
+    "id": "crate",
+    "displayName": "Crate",
+    "category": "Props",
+    "src": "./lore-assets/crate.glb",
+    "defaultScale": 1
+  },
+  {
+    "id": "barrel",
+    "displayName": "Barrel",
+    "category": "Props",
+    "src": "./lore-assets/barrel.glb",
+    "defaultScale": 1
+  },
+  {
+    "id": "tree",
+    "displayName": "Tree",
+    "category": "Nature",
+    "src": "./lore-assets/tree.glb",
+    "defaultScale": 1.35
+  }
+]

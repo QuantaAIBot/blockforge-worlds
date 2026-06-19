@@ -9,7 +9,7 @@ export type BlockType =
   | 'glass'
   | 'light'
 
-export type ToolMode = 'paint' | 'erase' | 'raise' | 'lower' | 'spawn'
+export type ToolMode = 'paint' | 'erase' | 'raise' | 'lower' | 'spawn' | 'prop'
 
 export type ZoneKind = 'safehouse' | 'market' | 'race' | 'mission'
 
@@ -18,6 +18,12 @@ export interface Voxel {
   y: number
   z: number
   type: BlockType
+}
+
+export type Vec3 = {
+  x: number
+  y: number
+  z: number
 }
 
 export interface SpawnPoint {
@@ -37,7 +43,26 @@ export interface MapZone {
   depth: number
 }
 
-export interface WorldMap {
+export interface PropPlacement {
+  id: string
+  assetId: string
+  x: number
+  y: number
+  z: number
+  rotY: number
+  scale: number
+}
+
+export interface AssetDescriptor {
+  id: string
+  displayName: string
+  category: string
+  src: string
+  defaultScale: number
+  thumbnailUrl?: string
+}
+
+export interface WorldMapV1 {
   schemaVersion: 1
   name: string
   seed: number
@@ -47,6 +72,12 @@ export interface WorldMap {
   spawn: SpawnPoint
   zones: MapZone[]
   blocks: Voxel[]
+}
+
+export interface WorldMap extends Omit<WorldMapV1, 'schemaVersion'> {
+  schemaVersion: 2
+  props: PropPlacement[]
+  spawnYaw: number
 }
 
 export interface BlockDefinition {
@@ -134,13 +165,14 @@ export function createWorld(seed = Math.floor(Math.random() * 999_999)): WorldMa
   const now = new Date().toISOString()
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     name: `BlockForge-${seed}`,
     seed,
     size,
     createdAt: now,
     updatedAt: now,
     spawn: { x: 0, y: topAtCenter + 1, z: 0 },
+    spawnYaw: 0,
     zones: [
       {
         id: 'safehouse-01',
@@ -174,6 +206,7 @@ export function createWorld(seed = Math.floor(Math.random() * 999_999)): WorldMa
       },
     ],
     blocks,
+    props: [],
   }
 }
 
