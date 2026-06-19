@@ -150,7 +150,7 @@ def import_props(props):
         actor = unreal.EditorLevelLibrary.spawn_actor_from_class(
             unreal.StaticMeshActor,
             unreal.Vector(prop["x"], prop["y"], prop["z"]),
-            unreal.Rotator(0, prop["yawDeg"], 0),
+            unreal.Rotator(pitch=0.0, yaw=prop["yawDeg"], roll=0.0),
         )
         actor.set_actor_label(f"LORE_Prop_{prop['assetId']}")
         actor.tags = [LORE_IMPORT_TAG, unreal.Name("LORE_Prop")]
@@ -161,11 +161,12 @@ def import_props(props):
 def import_zones(zones):
     for zone in zones:
         height_cm = zone.get("heightCm", ZONE_DEFAULT_HEIGHT_CM)
-        # Folded fix G9 pins zone height on UE Y. The manifest zone schema stores ground axes as x/z.
+        # Axis-consistency with greybox/props (Ren gate fix): blocks map three-up -> UE.Z, so the
+        # manifest zone ground axes (x = three.x, z = three.z) -> UE (X, Y), and height -> UE.Z (up).
         location = unreal.Vector(
             zone["x"] + zone["width"] / 2,
-            height_cm / 2,
             zone["z"] + zone["depth"] / 2,
+            height_cm / 2,
         )
         actor = unreal.EditorLevelLibrary.spawn_actor_from_class(
             unreal.BlockingVolume,
@@ -181,14 +182,15 @@ def import_zones(zones):
 
 
 def set_blocking_volume_size(actor, width, depth, height_cm):
-    # UE's default volume brush is 200 cm per axis; scale it so the final bounds match the manifest.
-    actor.set_actor_scale3d(unreal.Vector(width / 200, height_cm / 200, depth / 200))
+    # UE's default volume brush is 200 cm per axis; scale so final bounds match the manifest.
+    # width -> UE.X, depth -> UE.Y, height -> UE.Z (up) — consistent with greybox up-axis (Ren gate fix).
+    actor.set_actor_scale3d(unreal.Vector(width / 200, depth / 200, height_cm / 200))
 
 
 def move_or_create_spawn(spawn):
     player_start = find_lore_spawn()
     location = unreal.Vector(spawn["x"], spawn["y"], spawn["z"])
-    rotation = unreal.Rotator(0, spawn["yawDeg"], 0)
+    rotation = unreal.Rotator(pitch=0.0, yaw=spawn["yawDeg"], roll=0.0)
 
     if player_start is None:
         player_start = unreal.EditorLevelLibrary.spawn_actor_from_class(
