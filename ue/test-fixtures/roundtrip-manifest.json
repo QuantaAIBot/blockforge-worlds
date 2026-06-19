@@ -1,0 +1,70 @@
+{
+  "manifestVersion": 1,
+  "coordinateSpace": "ue5-zup-cm",
+  "sourceMap": {
+    "name": "RoundTrip-Fixture",
+    "seed": 1,
+    "exportedAt": "2026-06-19T02:42:05.196Z"
+  },
+  "greybox": [
+    {
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "blockType": "grass"
+    },
+    {
+      "x": 100,
+      "y": 0,
+      "z": 0,
+      "blockType": "grass"
+    },
+    {
+      "x": 200,
+      "y": 0,
+      "z": 0,
+      "blockType": "grass"
+    },
+    {
+      "x": 0,
+      "y": 100,
+      "z": 0,
+      "blockType": "grass"
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "z": 100,
+      "blockType": "brick"
+    }
+  ],
+  "props": [
+    {
+      "assetId": "crate",
+      "x": 200,
+      "y": 0,
+      "z": 0,
+      "yawDeg": -90,
+      "scale": 1
+    }
+  ],
+  "zones": [
+    {
+      "id": "z1",
+      "name": "Zone One",
+      "kind": "safehouse",
+      "x": 0,
+      "z": 0,
+      "width": 300,
+      "depth": 200,
+      "color": "#f4cb52",
+      "heightCm": 1000
+    }
+  ],
+  "spawn": {
+    "x": 0,
+    "y": 0,
+    "z": 0,
+    "yawDeg": 0
+  }
+}
