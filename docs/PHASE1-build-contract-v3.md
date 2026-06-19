@@ -16,15 +16,15 @@ M3 refute-first review of spec-v2 Phase 1 returned **NOT-READY**. Verified again
 **D1 — Split Phase 1 into 1A (build now) + 1B (build after contract-pin).**
 1A (schema v2 + migration + asset registry + glTF prop import + placement tool) is **pure browser/Three.js work with zero UE5 dependency** and ships visible, testable value (import + place real LORE props in the forge). 1B (the UE5 exporter) is genuinely not-buildable until the coordinate contract is pinned, a UE5 version is chosen, and a round-trip harness exists. Carving the contract-complete subset is standard incremental delivery and matches the spec's own "deliver in increments" north-star-honesty note. **Codex builds 1A now; 1B waits on the two open decisions below.**
 
-**D2 — Recommended amendment to Locked Decision #3 (export format). DREW DECISION.**
-Spec-v2 LD#3 = "glTF/GLB geometry + a placement-manifest JSON." I recommend the **manifest-primary, assets-by-reference** model instead:
+**D2 — RESOLVED (Drew, 2026-06-19): Locked Decision #3 AMENDED to manifest-primary, assets-by-reference.**
+Spec-v2 LD#3 = "glTF/GLB geometry + a placement-manifest JSON." Now amended to the **manifest-primary, assets-by-reference** model:
 - The LORE asset library (glTF/GLB) is imported **once into UE5** as native assets under `/Game/LORE/Props/`. It is ALSO loaded by the forge for in-browser visualization. It is the *shared source*, imported into each side once — **not re-exported by the forge per map.**
 - The forge's export for UE5 is **one manifest JSON** carrying: greybox voxel list, prop placements (`assetId` + transform), zones, spawn — all in pinned UE coordinate space.
 - The UE5 import script reads the manifest → rebuilds greybox as a UE `HISMC` per block type (cubes are trivially reconstructable from `{x,y,z,type}`) → spawns `/Game/LORE/Props/{assetId}` actors at the transforms → builds zone volumes → sets `PlayerStart`.
 - **Why:** dissolves M3's GLTFExporter-↔-`InstancedMesh` round-trip risk entirely (no geometry export), gives UE-native instancing + per-type materials + editor-swappable greybox, and keeps prop geometry lossless (UE imports the original glTF once, not a re-serialized copy). glTF/GLB stays load-bearing as the **asset-library source format**, just not as a per-map export artifact.
 - If Drew prefers to keep LD#3 as-written (glTF geometry export), 1B must additionally pin: merge-instances vs per-type bake, BlockType→material mapping in glTF, GLB-single-file, and UE's `EXT_mesh_gpu_instancing` import support must be engine-verified (currently UNCERTAIN). The manifest-primary model avoids all of that.
 
-**OPEN-1 (Drew): UE5 version target** — recommend **UE 5.5** (current stable, glTF Interchange + Python EditorScripting mature). Needed before 1B. Not needed for 1A.
+**OPEN-1 — RESOLVED (Drew, 2026-06-19): UE5 version target = UE 5.5.** (glTF Interchange + Python EditorScripting mature.) Applies to 1B. Not needed for 1A.
 
 ---
 
@@ -88,9 +88,9 @@ Spec-v2 LD#3 = "glTF/GLB geometry + a placement-manifest JSON." I recommend the 
 
 ---
 
-# PHASE 1B — UE5 exporter (BUILD AFTER: OPEN-1 + D2 resolved)
+# PHASE 1B — UE5 exporter (BUILD AFTER 1A; decisions RESOLVED → **UE 5.5 + manifest-primary**)
 
-Carved out because the contract below is unfinishable without a UE version (OPEN-1) and the export model (D2). Authoring the coordinate contract now so 1B is a short hop once those land.
+Both gating decisions are now locked (OPEN-1 = UE 5.5, D2 = manifest-primary). Remaining before 1B build: a UE 5.5 project to round-trip against (Ren to confirm/stand up), the final UE Python import script, and an M3 refute-first pass on the 1B contract with that real script embedded.
 
 ## Coordinate / units / rotation contract (Three.js → UE5) — PIN THIS, do not let the implementer guess
 | axis/quantity | Three.js (source) | UE5 (target) | conversion (applied at manifest-emit time, so the UE script consumes UE-space directly) |
@@ -131,6 +131,5 @@ Carved out because the contract below is unfinishable without a UE version (OPEN
 ---
 
 ## Verification gaps still open (Ren to close before 1B build)
-- UE version + whether a UE5 project exists to round-trip against (OPEN-1; may need Drew to stand one up).
-- D2 decision (manifest-primary vs glTF-geometry export).
-- `EXT_mesh_gpu_instancing` UE import support — only relevant if D2 is rejected.
+- A **UE 5.5** project to round-trip against (OPEN-1 version resolved; the project itself may need standing up).
+- (D2 resolved → manifest-primary; the `EXT_mesh_gpu_instancing` / GLTFExporter-InstancedMesh risk is now moot — no geometry export.)
