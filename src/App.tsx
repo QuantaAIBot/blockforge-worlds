@@ -2,18 +2,23 @@ import {
   Box,
   Crosshair,
   Download,
+  Maximize2,
   Eraser,
+  Package,
   Minus,
   Paintbrush,
   Plus,
   RefreshCcw,
+  RotateCw,
   Save,
   Share2,
+  Trash2,
   Upload,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import './App.css'
 import {
   blockDefinitions,
@@ -25,13 +30,24 @@ import {
   getTopY,
   withUpdatedTimestamp,
 } from './world'
-import type { BlockType, MapZone, ToolMode, Voxel, WorldMap } from './world'
+import { parseWorldText } from './worldMigration'
+import type {
+  AssetDescriptor,
+  BlockType,
+  MapZone,
+  PropPlacement,
+  ToolMode,
+  Vec3,
+  Voxel,
+  WorldMap,
+} from './world'
 
 const storageKey = 'blockforge-worlds.active-map'
 
 interface VoxelAction {
   voxel: Voxel
   normal: { x: number; y: number; z: number }
+  point: Vec3
 }
 
 const tools: Array<{
@@ -44,14 +60,31 @@ const tools: Array<{
   { mode: 'raise', label: 'Raise', icon: Plus },
   { mode: 'lower', label: 'Lower', icon: Minus },
   { mode: 'spawn', label: 'Spawn', icon: Crosshair },
+  { mode: 'prop', label: 'Prop', icon: Package },
 ]
+
+const propYawStep = Math.PI / 12
+const propScaleStep = 0.1
+const minPropScale = 0.05
+const maxPropScale = 50
 
 function App() {
   const [world, setWorld] = useState<WorldMap>(() => loadStoredWorld() ?? createWorld(120_626))
   const [selectedBlock, setSelectedBlock] = useState<BlockType>('brick')
+  const [assets, setAssets] = useState<AssetDescriptor[]>([])
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null)
+  const [selectedPropId, setSelectedPropId] = useState<string | null>(null)
   const [tool, setTool] = useState<ToolMode>('paint')
   const [notice, setNotice] = useState('Map forge online')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const selectedAsset = useMemo(
+    () => assets.find((asset) => asset.id === selectedAssetId) ?? null,
+    [assets, selectedAssetId],
+  )
+  const selectedProp = useMemo(
+    () => world.props.find((prop) => prop.id === selectedPropId) ?? null,
+    [selectedPropId, world.props],
+  )
 
   const stats = useMemo(() => {
     const typeCounts = world.blocks.reduce<Record<string, number>>((counts, block) => {
@@ -62,19 +95,67 @@ function App() {
     return {
       blocks: world.blocks.length.toLocaleString(),
       zones: world.zones.length,
+      props: world.props.length,
       topMaterial:
         Object.entries(typeCounts).sort(([, a], [, b]) => b - a)[0]?.[0] ?? 'none',
     }
-  }, [world.blocks, world.zones.length])
+  }, [world.blocks, world.props.length, world.zones.length])
 
   const showNotice = useCallback((message: string) => {
     setNotice(message)
     window.setTimeout(() => setNotice('Ready'), 1800)
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+
+    fetch('./lore-assets/catalog.json')
+      .then((response) => (response.ok ? response.json() : Promise.reject(response.statusText)))
+      .then((catalog: AssetDescriptor[]) => {
+        if (cancelled) {
+          return
+        }
+
+        setAssets(catalog)
+        setSelectedAssetId((current) => current ?? catalog[0]?.id ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          showNotice('Asset catalog unavailable')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [showNotice])
+
   const handleWorldAction = useCallback(
-    ({ voxel, normal }: VoxelAction) => {
+    ({ voxel, normal, point }: VoxelAction) => {
       setWorld((current) => {
+        if (tool === 'prop') {
+          if (!selectedAsset) {
+            return current
+          }
+
+          const prop: PropPlacement = {
+            id: crypto.randomUUID(),
+            assetId: selectedAsset.id,
+            x: point.x,
+            y: point.y,
+            z: point.z,
+            rotY: 0,
+            scale: clampPropScale(selectedAsset.defaultScale),
+          }
+
+          setSelectedPropId(prop.id)
+
+          return withUpdatedTimestamp({
+            ...current,
+            props: [...current.props, prop],
+          })
+        }
+
         const blockMap = createBlockMap(current.blocks)
         const commit = () =>
           withUpdatedTimestamp({
@@ -130,8 +211,61 @@ function App() {
         return commit()
       })
     },
-    [selectedBlock, tool],
+    [selectedAsset, selectedBlock, tool],
   )
+
+  const updateSelectedProp = useCallback(
+    (update: (prop: PropPlacement) => PropPlacement | null) => {
+      if (!selectedPropId) {
+        return
+      }
+
+      setWorld((current) => {
+        let changed = false
+        const props = current.props.flatMap((prop) => {
+          if (prop.id !== selectedPropId) {
+            return [prop]
+          }
+
+          const next = update(prop)
+          changed = true
+          return next ? [next] : []
+        })
+
+        if (!changed) {
+          return current
+        }
+
+        if (!props.some((prop) => prop.id === selectedPropId)) {
+          setSelectedPropId(null)
+        }
+
+        return withUpdatedTimestamp({
+          ...current,
+          props,
+        })
+      })
+    },
+    [selectedPropId],
+  )
+
+  const rotateSelectedProp = useCallback(() => {
+    updateSelectedProp((prop) => ({ ...prop, rotY: prop.rotY + propYawStep }))
+  }, [updateSelectedProp])
+
+  const scaleSelectedProp = useCallback(
+    (direction: 1 | -1) => {
+      updateSelectedProp((prop) => ({
+        ...prop,
+        scale: clampPropScale(prop.scale + propScaleStep * direction),
+      }))
+    },
+    [updateSelectedProp],
+  )
+
+  const deleteSelectedProp = useCallback(() => {
+    updateSelectedProp(() => null)
+  }, [updateSelectedProp])
 
   const saveWorld = useCallback(() => {
     localStorage.setItem(storageKey, JSON.stringify(world))
@@ -207,8 +341,11 @@ function App() {
       <BlockScene
         world={world}
         selectedBlock={selectedBlock}
+        assetCatalog={assets}
+        selectedPropId={selectedPropId}
         tool={tool}
         onVoxelAction={handleWorldAction}
+        onPropSelect={setSelectedPropId}
       />
 
       <header className="topbar">
@@ -265,6 +402,7 @@ function App() {
         <div className="manifest-grid">
           <Metric label="Blocks" value={stats.blocks} />
           <Metric label="Zones" value={String(stats.zones)} />
+          <Metric label="Props" value={String(stats.props)} />
           <Metric label="Top" value={blockLabels[stats.topMaterial as BlockType] ?? stats.topMaterial} />
         </div>
 
@@ -317,6 +455,50 @@ function App() {
         ))}
       </section>
 
+      <section className="asset-palette" aria-label="LORE asset palette">
+        <div className="asset-list">
+          {assets.map((asset) => (
+            <button
+              key={asset.id}
+              type="button"
+              className={selectedAssetId === asset.id ? 'active' : ''}
+              title={asset.displayName}
+              onClick={() => {
+                setSelectedAssetId(asset.id)
+                setTool('prop')
+              }}
+            >
+              <Package aria-hidden="true" />
+              <span>
+                <strong>{asset.displayName}</strong>
+                <em>{asset.category}</em>
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="prop-controls">
+          <IconButton label="Rotate selected prop" onClick={rotateSelectedProp}>
+            <RotateCw aria-hidden="true" />
+          </IconButton>
+          <IconButton label="Scale selected prop down" onClick={() => scaleSelectedProp(-1)}>
+            <Minus aria-hidden="true" />
+          </IconButton>
+          <IconButton label="Scale selected prop up" onClick={() => scaleSelectedProp(1)}>
+            <Maximize2 aria-hidden="true" />
+          </IconButton>
+          <IconButton label="Delete selected prop" onClick={deleteSelectedProp}>
+            <Trash2 aria-hidden="true" />
+          </IconButton>
+        </div>
+        <div className="prop-readout">
+          {selectedProp
+            ? `${selectedProp.assetId} · ${selectedProp.scale.toFixed(2)}x`
+            : selectedAsset
+              ? selectedAsset.displayName
+              : 'No assets'}
+        </div>
+      </section>
+
       <div className="notice" aria-live="polite">
         {notice}
       </div>
@@ -328,27 +510,38 @@ function BlockScene({
   world,
   tool,
   selectedBlock,
+  assetCatalog,
+  selectedPropId,
   onVoxelAction,
+  onPropSelect,
 }: {
   world: WorldMap
   tool: ToolMode
   selectedBlock: BlockType
+  assetCatalog: AssetDescriptor[]
+  selectedPropId: string | null
   onVoxelAction: (action: VoxelAction) => void
+  onPropSelect: (id: string | null) => void
 }) {
   const mountRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const blockGroupRef = useRef<THREE.Group | null>(null)
   const overlayGroupRef = useRef<THREE.Group | null>(null)
+  const propsGroupRef = useRef<THREE.Group | null>(null)
+  const loaderRef = useRef(new GLTFLoader())
+  const assetCacheRef = useRef(new Map<string, Promise<THREE.Object3D>>())
   const targetsRef = useRef<THREE.Object3D[]>([])
   const actionRef = useRef(onVoxelAction)
+  const propSelectRef = useRef(onPropSelect)
   const selectedRef = useRef(selectedBlock)
   const toolRef = useRef(tool)
 
   useEffect(() => {
     actionRef.current = onVoxelAction
+    propSelectRef.current = onPropSelect
     selectedRef.current = selectedBlock
     toolRef.current = tool
-  }, [onVoxelAction, selectedBlock, tool])
+  }, [onPropSelect, onVoxelAction, selectedBlock, tool])
 
   useEffect(() => {
     const mount = mountRef.current
@@ -357,6 +550,7 @@ function BlockScene({
       return undefined
     }
 
+    const assetCache = assetCacheRef.current
     const scene = new THREE.Scene()
     scene.background = new THREE.Color('#9bd7d2')
     scene.fog = new THREE.Fog('#9bd7d2', 32, 82)
@@ -392,9 +586,11 @@ function BlockScene({
 
     const blockGroup = new THREE.Group()
     const overlayGroup = new THREE.Group()
+    const propsGroup = new THREE.Group()
     blockGroupRef.current = blockGroup
     overlayGroupRef.current = overlayGroup
-    scene.add(blockGroup, overlayGroup)
+    propsGroupRef.current = propsGroup
+    scene.add(blockGroup, propsGroup, overlayGroup)
 
     const raycaster = new THREE.Raycaster()
     const pointer = new THREE.Vector2()
@@ -429,6 +625,17 @@ function BlockScene({
       pointer.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1)
       raycaster.setFromCamera(pointer, camera)
 
+      if (toolRef.current === 'prop') {
+        const propGroup = propsGroupRef.current
+        const [propHit] = propGroup ? raycaster.intersectObjects(propGroup.children, true) : []
+        const propId = getHitPropId(propHit?.object)
+
+        if (propId) {
+          propSelectRef.current(propId)
+          return
+        }
+      }
+
       const [hit] = raycaster.intersectObjects(targetsRef.current, false)
 
       const voxel = getHitVoxel(hit)
@@ -444,6 +651,11 @@ function BlockScene({
           x: Math.round(normal.x),
           y: Math.round(normal.y),
           z: Math.round(normal.z),
+        },
+        point: {
+          x: hit.point.x,
+          y: hit.point.y,
+          z: hit.point.z,
         },
       })
     }
@@ -473,6 +685,11 @@ function BlockScene({
       controls.dispose()
       clearGroup(blockGroup)
       clearGroup(overlayGroup)
+      clearGroup(propsGroup)
+      for (const asset of assetCache.values()) {
+        asset.then(disposeObject).catch(() => undefined)
+      }
+      assetCache.clear()
       renderer.dispose()
       mount.removeChild(renderer.domElement)
     }
@@ -536,6 +753,55 @@ function BlockScene({
       Object.values(materials).forEach((material) => material.dispose())
     }
   }, [world])
+
+  useEffect(() => {
+    const propsGroup = propsGroupRef.current
+
+    if (!propsGroup) {
+      return undefined
+    }
+
+    let cancelled = false
+    clearGroup(propsGroup)
+
+    const assetsById = new Map(assetCatalog.map((asset) => [asset.id, asset]))
+
+    const renderProps = async () => {
+      for (const prop of world.props) {
+        const asset = assetsById.get(prop.assetId)
+
+        if (!asset) {
+          continue
+        }
+
+        const source = await loadAsset(asset, loaderRef.current, assetCacheRef.current)
+
+        if (cancelled) {
+          return
+        }
+
+        const object = source.clone(true)
+        object.position.set(prop.x, prop.y, prop.z)
+        object.rotation.y = prop.rotY
+        object.scale.setScalar(clampPropScale(prop.scale))
+        markPropObject(object, prop.id)
+        propsGroup.add(object)
+
+        if (prop.id === selectedPropId) {
+          const helper = new THREE.BoxHelper(object, '#f4cb52')
+          helper.userData.propId = prop.id
+          propsGroup.add(helper)
+        }
+      }
+    }
+
+    void renderProps()
+
+    return () => {
+      cancelled = true
+      clearGroup(propsGroup)
+    }
+  }, [assetCatalog, selectedPropId, world.props])
 
   return <div ref={mountRef} className="scene-mount" />
 }
@@ -615,6 +881,45 @@ function addZones(group: THREE.Group, zones: MapZone[], blocks: Voxel[]) {
   }
 }
 
+function loadAsset(
+  asset: AssetDescriptor,
+  loader: GLTFLoader,
+  cache: Map<string, Promise<THREE.Object3D>>,
+) {
+  const cached = cache.get(asset.id)
+
+  if (cached) {
+    return cached
+  }
+
+  const load = loader.loadAsync(asset.src).then((gltf) => gltf.scene)
+  cache.set(asset.id, load)
+  return load
+}
+
+function markPropObject(object: THREE.Object3D, propId: string) {
+  object.userData.propId = propId
+  object.traverse((child) => {
+    child.userData.propId = propId
+  })
+}
+
+function getHitPropId(object: THREE.Object3D | undefined) {
+  let current: THREE.Object3D | null | undefined = object
+
+  while (current) {
+    const propId = current.userData.propId
+
+    if (typeof propId === 'string') {
+      return propId
+    }
+
+    current = current.parent
+  }
+
+  return null
+}
+
 function getHitVoxel(hit: THREE.Intersection<THREE.Object3D> | undefined) {
   if (!hit) {
     return null
@@ -661,6 +966,28 @@ function clearGroup(group: THREE.Group) {
   }
 }
 
+function disposeObject(object: THREE.Object3D) {
+  object.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.geometry.dispose()
+      disposeMaterial(child.material)
+    }
+  })
+}
+
+function disposeMaterial(material: THREE.Material | THREE.Material[]) {
+  if (Array.isArray(material)) {
+    material.forEach((entry) => entry.dispose())
+    return
+  }
+
+  material.dispose()
+}
+
+function clampPropScale(scale: number) {
+  return Math.min(maxPropScale, Math.max(minPropScale, scale))
+}
+
 function sortVoxels(a: Voxel, b: Voxel) {
   return a.y - b.y || a.x - b.x || a.z - b.z
 }
@@ -675,36 +1002,8 @@ function loadStoredWorld() {
   return parseWorldText(raw)
 }
 
-function parseWorldText(text: string): WorldMap | null {
-  const source = text.trim()
-
-  try {
-    const direct = JSON.parse(source) as WorldMap
-    return isWorldMap(direct) ? direct : null
-  } catch {
-    try {
-      const decoded = decodeURIComponent(escape(window.atob(source)))
-      const parsed = JSON.parse(decoded) as WorldMap
-      return isWorldMap(parsed) ? parsed : null
-    } catch {
-      return null
-    }
-  }
-}
-
 function encodeWorld(world: WorldMap) {
   return window.btoa(unescape(encodeURIComponent(JSON.stringify(world))))
-}
-
-function isWorldMap(value: WorldMap | null): value is WorldMap {
-  return Boolean(
-    value &&
-      value.schemaVersion === 1 &&
-      typeof value.name === 'string' &&
-      typeof value.seed === 'number' &&
-      Array.isArray(value.blocks) &&
-      value.spawn,
-  )
 }
 
 export default App
