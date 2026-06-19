@@ -1,3 +1,4 @@
+import { coerceBlockType } from './world'
 import type { WorldMap, WorldMapV1 } from './world'
 
 type MigratableWorld = (Partial<WorldMap> | Partial<WorldMapV1>) & {
@@ -14,6 +15,7 @@ export function migrateWorld(raw: unknown): WorldMap | null {
   if (source.schemaVersion === 1) {
     const migrated = {
       ...source,
+      blocks: sanitizeBlocks(source.blocks),
       props: [],
       spawnYaw: 0,
       schemaVersion: 2,
@@ -26,7 +28,7 @@ export function migrateWorld(raw: unknown): WorldMap | null {
     const migrated = {
       ...source,
       zones: source.zones ?? [],
-      blocks: source.blocks ?? [],
+      blocks: sanitizeBlocks(source.blocks),
       props: source.props ?? [],
       spawnYaw: source.spawnYaw ?? 0,
     }
@@ -72,4 +74,21 @@ export function isWorldMapV2(value: unknown): value is WorldMap {
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+function sanitizeBlocks(blocks: unknown): WorldMap['blocks'] {
+  if (!Array.isArray(blocks)) {
+    return []
+  }
+
+  return blocks.map((block) => {
+    if (!isObject(block)) {
+      return block
+    }
+
+    return {
+      ...block,
+      type: coerceBlockType(block.type),
+    }
+  }) as WorldMap['blocks']
 }

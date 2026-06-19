@@ -98,6 +98,13 @@ export const blockDefinitions: BlockDefinition[] = [
   { type: 'light', label: 'Light', color: '#f4cb52' },
 ]
 
+export const KNOWN_BLOCK_TYPES = new Set<BlockType>(blockDefinitions.map((block) => block.type))
+export const FALLBACK_BLOCK_TYPE: BlockType = 'stone'
+
+export function coerceBlockType(type: unknown): BlockType {
+  return KNOWN_BLOCK_TYPES.has(type as BlockType) ? (type as BlockType) : FALLBACK_BLOCK_TYPE
+}
+
 export const blockLabels = blockDefinitions.reduce(
   (labels, block) => ({ ...labels, [block.type]: block.label }),
   {} as Record<BlockType, string>,
