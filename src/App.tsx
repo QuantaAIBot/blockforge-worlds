@@ -20,6 +20,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import './App.css'
+import { toUePlacement } from './ueExport'
 import {
   blockDefinitions,
   blockKey,
@@ -310,6 +311,17 @@ function App() {
     showNotice('Map JSON exported')
   }, [showNotice, world])
 
+  const exportForUe = useCallback(() => {
+    const json = JSON.stringify(toUePlacement(world), null, 2)
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'lore-placement.json'
+    link.click()
+    URL.revokeObjectURL(url)
+    showNotice('UE5 placement exported')
+  }, [showNotice, world])
+
   const copyShareCode = useCallback(async () => {
     const code = encodeWorld(world)
     await navigator.clipboard.writeText(code)
@@ -375,6 +387,9 @@ function App() {
             <Upload aria-hidden="true" />
           </IconButton>
           <IconButton label="Export" onClick={exportWorld}>
+            <Download aria-hidden="true" />
+          </IconButton>
+          <IconButton label="Export for UE5" onClick={exportForUe}>
             <Download aria-hidden="true" />
           </IconButton>
           <IconButton label="Copy share code" onClick={copyShareCode}>
