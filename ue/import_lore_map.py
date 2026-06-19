@@ -85,9 +85,40 @@ def validate_manifest(manifest):
 
 
 def remove_lore_import_actors():
-    for actor in unreal.EditorLevelLibrary.get_all_level_actors():
+    for actor in get_all_level_actors():
         if has_lore_import_tag(actor):
-            unreal.EditorLevelLibrary.destroy_actor(actor)
+            destroy_actor(actor)
+
+
+def get_editor_actor_subsystem():
+    if hasattr(unreal, "EditorActorSubsystem"):
+        return unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+
+    return None
+
+
+def get_all_level_actors():
+    editor_actor_subsystem = get_editor_actor_subsystem()
+    if editor_actor_subsystem is not None:
+        return editor_actor_subsystem.get_all_level_actors()
+
+    return unreal.EditorLevelLibrary.get_all_level_actors()
+
+
+def spawn_actor_from_class(actor_class, location, rotation):
+    editor_actor_subsystem = get_editor_actor_subsystem()
+    if editor_actor_subsystem is not None:
+        return editor_actor_subsystem.spawn_actor_from_class(actor_class, location, rotation)
+
+    return unreal.EditorLevelLibrary.spawn_actor_from_class(actor_class, location, rotation)
+
+
+def destroy_actor(actor):
+    editor_actor_subsystem = get_editor_actor_subsystem()
+    if editor_actor_subsystem is not None:
+        return editor_actor_subsystem.destroy_actor(actor)
+
+    return unreal.EditorLevelLibrary.destroy_actor(actor)
 
 
 def has_lore_import_tag(actor):
@@ -115,7 +146,7 @@ def import_greybox(greybox, cube_mesh):
 
 
 def create_hism_actor(block_type, cube_mesh):
-    actor = unreal.EditorLevelLibrary.spawn_actor_from_class(
+    actor = spawn_actor_from_class(
         unreal.Actor,
         unreal.Vector(0, 0, 0),
         unreal.Rotator(0, 0, 0),
@@ -127,15 +158,63 @@ def create_hism_actor(block_type, cube_mesh):
         unreal.Name(f"LORE_BlockType_{block_type}"),
     ]
 
-    component = actor.add_component_by_class(
-        unreal.HierarchicalInstancedStaticMeshComponent,
-        False,
-        unreal.Transform(),
-        False,
-    )
+    component = create_hism_component(actor)
     component.set_static_mesh(cube_mesh)
     component.set_editor_property("mobility", unreal.ComponentMobility.STATIC)
-    component.register_component()
+    if hasattr(component, "register_component"):
+        component.register_component()
+    return component
+
+
+def create_hism_component(actor):
+    if hasattr(actor, "add_component_by_class"):
+        return actor.add_component_by_class(
+            unreal.HierarchicalInstancedStaticMeshComponent,
+            False,
+            unreal.Transform(),
+            False,
+        )
+
+    return add_component_with_subobject_data(
+        actor,
+        unreal.HierarchicalInstancedStaticMeshComponent,
+    )
+
+
+def add_component_with_subobject_data(actor, component_class):
+    if not hasattr(unreal, "SubobjectDataSubsystem") or not hasattr(unreal, "AddNewSubobjectParams"):
+        raise RuntimeError(
+            "Cannot add HISM component: Actor.add_component_by_class and "
+            "SubobjectDataSubsystem are both unavailable."
+        )
+
+    subobject_subsystem = unreal.get_engine_subsystem(unreal.SubobjectDataSubsystem)
+    handles = subobject_subsystem.k2_gather_subobject_data_for_instance(actor)
+    if not handles:
+        raise RuntimeError(f"Cannot add component: no subobject handles for {actor}.")
+
+    params = unreal.AddNewSubobjectParams()
+    params.set_editor_property("parent_handle", handles[0])
+    params.set_editor_property("new_class", component_class)
+    params.set_editor_property("conform_transform_to_parent", True)
+    params.set_editor_property("skip_mark_blueprint_modified", True)
+
+    add_result = subobject_subsystem.add_new_subobject(params)
+    if isinstance(add_result, tuple):
+        component_handle = add_result[0]
+        fail_reason = add_result[1] if len(add_result) > 1 else None
+    else:
+        component_handle = add_result
+        fail_reason = None
+
+    if not unreal.SubobjectDataBlueprintFunctionLibrary.is_handle_valid(component_handle):
+        raise RuntimeError(f"Cannot add component {component_class}: {fail_reason}.")
+
+    component_data = subobject_subsystem.k2_find_subobject_data_from_handle(component_handle)
+    component = unreal.SubobjectDataBlueprintFunctionLibrary.get_associated_object(component_data)
+    if component is None:
+        raise RuntimeError(f"Cannot resolve added component {component_class}.")
+
     return component
 
 
@@ -147,7 +226,7 @@ def import_props(props):
             continue
 
         mesh = unreal.EditorAssetLibrary.load_asset(asset_path)
-        actor = unreal.EditorLevelLibrary.spawn_actor_from_class(
+        actor = spawn_actor_from_class(
             unreal.StaticMeshActor,
             unreal.Vector(prop["x"], prop["y"], prop["z"]),
             unreal.Rotator(pitch=0.0, yaw=prop["yawDeg"], roll=0.0),
@@ -168,7 +247,7 @@ def import_zones(zones):
             zone["z"] + zone["depth"] / 2,
             height_cm / 2,
         )
-        actor = unreal.EditorLevelLibrary.spawn_actor_from_class(
+        actor = spawn_actor_from_class(
             unreal.BlockingVolume,
             location,
             unreal.Rotator(0, 0, 0),
@@ -193,7 +272,7 @@ def move_or_create_spawn(spawn):
     rotation = unreal.Rotator(pitch=0.0, yaw=spawn["yawDeg"], roll=0.0)
 
     if player_start is None:
-        player_start = unreal.EditorLevelLibrary.spawn_actor_from_class(
+        player_start = spawn_actor_from_class(
             unreal.PlayerStart,
             location,
             rotation,
@@ -207,7 +286,7 @@ def move_or_create_spawn(spawn):
 
 
 def find_lore_spawn():
-    for actor in unreal.EditorLevelLibrary.get_all_level_actors():
+    for actor in get_all_level_actors():
         if isinstance(actor, unreal.PlayerStart) and LORE_SPAWN_TAG in actor.tags:
             return actor
 
