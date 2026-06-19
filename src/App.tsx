@@ -24,6 +24,7 @@ import {
   blockDefinitions,
   blockKey,
   blockLabels,
+  coerceBlockType,
   createBlockMap,
   createWorld,
   getTopBlock,
@@ -711,7 +712,7 @@ function BlockScene({
     const targets: THREE.Object3D[] = []
     const blocksByType = world.blocks.reduce<Record<BlockType, Voxel[]>>(
       (groups, block) => {
-        groups[block.type].push(block)
+        groups[coerceBlockType(block.type)].push(block)
         return groups
       },
       {

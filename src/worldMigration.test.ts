@@ -35,6 +35,25 @@ describe('migrateWorld', () => {
     expect(migrateWorld(source)).toEqual(source)
   })
 
+  it('coerces unknown v2 block types and preserves block count', () => {
+    const source = {
+      ...v1Fixture,
+      schemaVersion: 2,
+      blocks: [
+        { x: 0, y: 0, z: 0, type: 'lava' },
+        { x: 1, y: 0, z: 0, type: 'grass' },
+      ],
+      props: [],
+      spawnYaw: 0,
+    }
+
+    const migrated = migrateWorld(source)
+
+    expect(migrated?.blocks).toHaveLength(source.blocks.length)
+    expect(migrated?.blocks[0].type).toBe('stone')
+    expect(migrated?.blocks[1].type).toBe('grass')
+  })
+
   it('defaults missing v2 zones to an empty array', () => {
     const source = {
       ...v1Fixture,
