@@ -51,7 +51,8 @@ describe('createUefnExportPackage', () => {
     expect(deviceVerse).toContain('PropCrateAsset : creative_prop_asset = DefaultCreativePropAsset')
     expect(deviceVerse).toContain('MakeRotationFromYawPitchRollDegrees(Row.YawDeg, 0.0, 0.0)')
     expect(deviceVerse).toContain('SpawnProp(Asset, Row.Position, Rotation)')
-    expect(deviceVerse).toContain('Print("LORE blockout fixture spawning 6 prop(s)')
+    expect(deviceVerse).toContain('Print("LORE blockout fixture spawning 6 prop(s) from RoundTrip-Fixture")')
+    expect(deviceVerse).not.toContain('from "RoundTrip-Fixture"')
   })
 
   it('makes the UEFN human handoff explicit in the generated README', () => {

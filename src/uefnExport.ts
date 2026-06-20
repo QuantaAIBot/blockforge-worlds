@@ -1,4 +1,4 @@
-import { blockDefinitions, type AssetDescriptor, type BlockType } from './world'
+import { blockDefinitions, type AssetDescriptor, type BlockType } from './world.ts'
 import type { UePlacement } from './ueExport'
 
 export const UEFN_RUNTIME_PROP_LIMIT_PER_DEVICE = 100
@@ -308,7 +308,9 @@ function renderVerseDevice(
     editableFields,
     '',
     '    OnBegin<override>()<suspends>:void=',
-    `        Print("LORE blockout fixture spawning ${stats.runtimeSpawnCount} prop(s) from ${verseString(placement.sourceMap.name)}")`,
+    `        Print("LORE blockout fixture spawning ${stats.runtimeSpawnCount} prop(s) from ${verseStringContent(
+      placement.sourceMap.name,
+    )}")`,
     '        SpawnRows(LORE_GREYBOX_ROWS)',
     '        SpawnRows(LORE_PROP_ROWS)',
     '',
@@ -531,4 +533,8 @@ function formatNumber(value: number) {
 
 function verseString(value: string) {
   return JSON.stringify(value)
+}
+
+function verseStringContent(value: string) {
+  return JSON.stringify(value).slice(1, -1)
 }
